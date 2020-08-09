@@ -1,0 +1,10 @@
+[
+  {
+    "ParameterKey": "KeyPairName",
+    "ParameterValue": "Troposphere-tsc-dev"
+  },
+  {
+    "ParameterKey": "InstanceType1",
+    "ParameterValue": "t2.micro"
+  }
+]

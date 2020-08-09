@@ -1,0 +1,227 @@
+{
+    "Outputs": {
+        "vpcId": {
+            "Value": {
+                "Ref": "vpc"
+            },
+            "Export" : { "Name" : {"Fn::Sub": "${AWS::StackName}-vpcId" }}
+        },
+        "publicSubCidr": {
+            "Value": {
+                "Ref": "publicSubCidr"
+            },
+            "Export" : { "Name" : {"Fn::Sub": "${AWS::StackName}-publicSubCidr" }}
+        },
+        "igwVpcAttachment": {
+            "Value": {
+                "Ref": "igwVpcAttachment"
+            }
+        },
+        "internetGateway": {
+            "Value": {
+                "Ref": "vpcIgw"
+            }
+        },
+        "privateSubnet1": {
+            "Value": {
+                "Ref": "privateSubnet1"
+            },
+            "Export" : { "Name" : {"Fn::Sub": "${AWS::StackName}-privateSubnet1" }}
+        },
+        "publicSubnet1": {
+            "Value": {
+                "Ref": "publicSubnet1"
+            },
+            "Export" : { "Name" : {"Fn::Sub": "${AWS::StackName}-publicSubnet1" }}
+        }
+    },
+    "Parameters": {
+        "VPCCidr": {
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x.",
+            "Description": "VPC Cidr",
+            "Type": "String"
+        },
+        "privateSubCidr": {
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x.",
+            "Description": "Cidr for private subnet",
+            "Type": "String"
+        },
+        "publicSubCidr": {
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x.",
+            "Description": "Cidr for public subnet",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "vpc": {
+            "Properties": {
+                "CidrBlock": {
+                    "Ref":"VPCCidr"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "BaseNetwork"
+                    }
+                ]
+            },
+            "Type": "AWS::EC2::VPC"
+        },
+        "vpcIgw": {
+            "Type": "AWS::EC2::InternetGateway"
+        },
+        "igwVpcAttachment": {
+            "Properties": {
+                "InternetGatewayId": {
+                    "Ref": "vpcIgw"
+                },
+                "VpcId": {
+                    "Ref": "vpc"
+                }
+            },
+            "Type": "AWS::EC2::VPCGatewayAttachment"
+        },
+        "privateSubnet1": {
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "CidrBlock": {
+                    "Ref": "privateSubCidr"
+                },
+                "Tags": [
+                    {
+                        "Key": "network",
+                        "Value": "private"
+                    },
+                    {
+                        "Key": "Name",
+                        "Value": "privateSubnet1"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "vpc"
+                }
+            },
+            "Type": "AWS::EC2::Subnet"
+        },
+        "privateRouteTable": {
+            "Properties": {
+                "VpcId": {
+                    "Ref": "vpc"
+                }
+            },
+            "Type": "AWS::EC2::RouteTable"
+        },
+        "privateSubnetRouteTableAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "privateRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "privateSubnet1"
+                }
+            },
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        },
+        "privateEgressRoute": {
+            "Properties": {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId": {
+                    "Ref": "NATGW1"
+                },
+                "RouteTableId": {
+                    "Ref": "privateRouteTable"
+                }
+            },
+            "Type": "AWS::EC2::Route"
+        },
+        "publicSubnet1": {
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "MapPublicIpOnLaunch": "true",
+                "CidrBlock": {
+                    "Ref": "publicSubCidr"
+                },
+                "Tags": [
+                    {
+                        "Key": "network",
+                        "Value": "public"
+                    },
+                    {
+                        "Key": "Name",
+                        "Value": "publicSubnet1"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "vpc"
+                }
+            },
+            "Type": "AWS::EC2::Subnet"
+        },
+        "publicRouteTable": {
+            "Properties": {
+                "VpcId": {
+                    "Ref": "vpc"
+                }
+            },
+            "Type": "AWS::EC2::RouteTable"
+        },
+        "publicRouteTableAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "publicRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "publicSubnet1"
+                }
+            },
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        },
+        "publicEgressRoute": {
+            "DependsOn": [
+                "igwVpcAttachment"
+            ],
+            "Properties": {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "vpcIgw"
+                },
+                "RouteTableId": {
+                    "Ref": "publicRouteTable"
+                }
+            },
+            "Type": "AWS::EC2::Route"
+        },
+        "NATGW1" : {
+           "Type" : "AWS::EC2::NatGateway",
+           "Properties" : {
+              "AllocationId" : { "Fn::GetAtt" : ["NATEip", "AllocationId"]},
+              "SubnetId" : { "Ref" : "publicSubnet1"},
+              "Tags" : [ {"Key" : "NAME", "Value" : "NATGW1" } ]
+             }
+        },
+        "NATEip" : {
+           "DependsOn" : "igwVpcAttachment",
+           "Type" : "AWS::EC2::EIP",
+           "Properties" : {
+              "Domain" : "vpc"
+           }
+        }
+    }
+}

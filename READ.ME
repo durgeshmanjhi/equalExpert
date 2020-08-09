@@ -1,0 +1,32 @@
+############################################################################################
+
+To Deploy env follow these steps
+1) export AWS_DEFAULT_PROFILE
+2) Create key pair and replace its name in instancesParameter.json file
+3) Run deploy.bash script
+
+
+###########################################################################################
+
+It will create following resources
+
+baseNetwork Stack
+1) Vpc
+2) private and public subnet
+3) Internet Gatway and NAT Gateway and basic routes to connect
+
+Instances Stack
+1) one instance and security group in private subnet
+2) one instance and secruity group in public subnet
+3) install jenkins and ansible on public subnet instance.
+4) install tomcat on private subnet instance.
+
+
+###########################################################################################
+
+To Undeploy environment
+1) export AWS_DEFAULT_PROFILE
+2) Run undeploy.bash script
+
+
+###########################################################################################

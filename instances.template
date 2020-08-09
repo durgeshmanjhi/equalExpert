@@ -1,0 +1,182 @@
+{
+    "Mappings" : {
+        "RegionMap" : {
+            "us-east-1" : { 
+                "AMI" : "ami-0ff8a91507f77f867" 
+            },
+            "us-west-2" : {
+                "AMI" : "ami-a0cfeed8"
+            },
+            "eu-west-1" : { 
+                "AMI" : "ami-047bb4163c506cd98" 
+            },
+            "ap-northeast-1" : { 
+                "AMI" : "ami-06cd52961ce9f0d85" 
+            },
+            "ap-southeast-1" : { 
+                "AMI" : "ami-08569b978cc4dfa10" 
+            }
+        }
+    },
+    "Outputs": {
+        "privateEc2Instance1": {
+            "Value": {
+                "Ref": "privateEc2Instance1"
+            }
+        },
+        "privateInstanceSecurityGroup": {
+            "Value": {
+                "Ref": "privateInstanceSecurityGroup"
+            }
+        },
+        "publicEc2Instance1": {
+            "Value": {
+                "Ref": "publicEc2Instance1"
+            }
+        },
+        "publicInstanceSecurityGroup": {
+            "Value": {
+                "Ref": "publicInstanceSecurityGroup"
+            }
+        }
+    },
+    "Parameters": {
+        "KeyPairName": {
+            "AllowedPattern": "[\\x20-\\x7E]*",
+            "ConstraintDescription": "can only contain ASCII characters.",
+            "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances",
+            "MaxLength": 255,
+            "MinLength": 1,
+            "Type": "String"
+        },
+        "InstanceType1": {
+            "Description": "Instnace type",
+            "Type": "String"
+        }
+    },
+    "Resources" : {
+        "privateEc2Instance1" : {
+            "Type" : "AWS::EC2::Instance",
+            "Properties" : {
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "RegionMap",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        "AMI"
+                    ]
+                },
+                "InstanceType" : {
+                    "Ref": "InstanceType1"
+                },
+                "KeyName": {
+                    "Ref": "KeyPairName"
+                },
+                "UserData": { "Fn::Base64" : { "Fn::Join" : ["", [
+                        "#!/bin/bash -xe\n",
+                        "sudo yum -y install java-1.8.0\n",
+                        "sudo yum -y remove java-1.7.0-openjdk\n",
+                        "sudo yum install -y tomcat7-webapps tomcat7-docs-webapp tomcat7-admin-webapps \n",
+                        "sudo service tomcat7 start \n"
+                    ]]}},
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "PrivateInstance1"
+                    }
+                 ],
+                "NetworkInterfaces": [ {
+                      "AssociatePublicIpAddress": "false",
+                      "DeviceIndex": "0",
+                      "GroupSet": [{ "Ref" : "privateInstanceSecurityGroup" }],
+                      "SubnetId": {"Fn::ImportValue" : {"Fn::Sub" : "baseNetwork-privateSubnet1"}}
+                      }
+                    ]
+            }
+        },
+        "privateInstanceSecurityGroup" : {
+           "Type" : "AWS::EC2::SecurityGroup",
+           "Properties" : {
+              "GroupDescription" : "security group for private instance",
+              "VpcId" : {"Fn::ImportValue" : {"Fn::Sub" : "baseNetwork-vpcId"}},
+              "SecurityGroupIngress" : [{
+                 "IpProtocol" : "-1",
+                 "CidrIp" : {"Fn::ImportValue" : {"Fn::Sub" : "baseNetwork-publicSubCidr"}}
+              }],
+              "SecurityGroupEgress" : [{
+                 "IpProtocol" : "-1",
+                 "CidrIp" : "0.0.0.0/0"
+                    }]
+                }
+        },
+        "publicEc2Instance1" : {
+            "Type" : "AWS::EC2::Instance",
+            "Properties" : {
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "RegionMap",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        "AMI"
+                    ]
+                },
+                "InstanceType" : {
+                    "Ref": "InstanceType1"
+                },
+                "KeyName": {
+                    "Ref": "KeyPairName"
+                },
+                "UserData": { "Fn::Base64" : { "Fn::Join" : ["", [
+                        "#!/bin/bash -xe\n",
+                        "sudo yum -y update \n",
+                        "sudo yum -y install java-1.8.0\n",
+                        "sudo yum -y remove java-1.7.0-openjdk\n",
+                        "sudo wget -O /etc/yum.repos.d/jenkins.repo  https://pkg.jenkins.io/redhat-stable/jenkins.repo\n",
+                        "sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io.key\n",
+                        "sudo yum upgrade -y \n",
+                        "sudo yum install jenkins -y\n",
+                        "sudo service jenkins start\n",
+                        "sudo chkconfig --add jenkins\n",
+                        "sudo yum-config-manager --enable epel \n",
+                        "sudo yum repolist \n",
+                        "sudo yum -y install ansible \n",
+                        "sudo yum install git -y \n",
+                        "wget --no-check-certificate --no-cookies --header \"Cookie: oraclelicense=accept-securebackup-cookie\" http://download.oracle.com/otn-pub/java/jdk/8u141-b15/336fa29ff2bb4ef291e347e091f7f4a7/jdk-8u141-linux-x64.rpm \n",
+                        "sudo yum install -y jdk-8u141-linux-x64.rpm \n"
+                    ]]}},
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "PublicInstance1"
+                    }
+                 ],
+                "NetworkInterfaces": [ {
+                      "AssociatePublicIpAddress": "true",
+                      "DeviceIndex": "0",
+                      "GroupSet": [{ "Ref" : "publicInstanceSecurityGroup" }],
+                      "SubnetId": {"Fn::ImportValue" : {"Fn::Sub" : "baseNetwork-publicSubnet1"}}
+                      }
+                    ]
+            }
+        },
+        "publicInstanceSecurityGroup" : {
+           "Type" : "AWS::EC2::SecurityGroup",
+           "Properties" : {
+              "GroupDescription" : "security group for public instance",
+              "VpcId" : {"Fn::ImportValue" : {"Fn::Sub" : "baseNetwork-vpcId"}},
+              "SecurityGroupIngress" : [{
+                 "IpProtocol" : "tcp",
+                 "FromPort" : 22,
+                 "ToPort" : 22,
+                 "CidrIp" : {"Fn::ImportValue" : {"Fn::Sub" : "baseNetwork-publicSubCidr"}}
+              }],
+              "SecurityGroupEgress" : [{
+                 "IpProtocol" : "-1",
+                 "CidrIp" : "0.0.0.0/0"
+              }]
+           }
+        }
+    }
+}
