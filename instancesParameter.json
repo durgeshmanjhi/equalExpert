@@ -5,6 +5,6 @@
   },
   {
     "ParameterKey": "InstanceType1",
-    "ParameterValue": "t2.micro"
+    "ParameterValue": "t2.large"
   }
 ]

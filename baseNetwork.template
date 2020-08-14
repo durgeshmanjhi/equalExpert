@@ -12,6 +12,12 @@
             },
             "Export" : { "Name" : {"Fn::Sub": "${AWS::StackName}-publicSubCidr" }}
         },
+        "privateSubCidr": {
+            "Value": {
+                "Ref": "privateSubCidr"
+            },
+            "Export" : { "Name" : {"Fn::Sub": "${AWS::StackName}-privateSubCidr" }}
+        },
         "igwVpcAttachment": {
             "Value": {
                 "Ref": "igwVpcAttachment"

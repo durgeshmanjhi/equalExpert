@@ -78,7 +78,16 @@
                         "sudo yum -y install java-1.8.0\n",
                         "sudo yum -y remove java-1.7.0-openjdk\n",
                         "sudo yum install -y tomcat7-webapps tomcat7-docs-webapp tomcat7-admin-webapps \n",
-                        "sudo service tomcat7 start \n"
+                        "sudo service tomcat7 start \n",
+                        "DIR_TGT=/mnt/artefact/",
+                        "\n",
+                        "EFS_FILE_SYSTEM_IP=",
+                        {
+                            "Fn::GetAtt" : [ "MountTarget1", "IpAddress" ]
+                        },
+                        "\n",
+                        "mkdir -p $DIR_TGT\n",
+                        "sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${EFS_FILE_SYSTEM_IP}:/ /mnt/artefact/"
                     ]]}},
                 "Tags": [
                     {
@@ -143,8 +152,22 @@
                         "sudo yum repolist \n",
                         "sudo yum -y install ansible \n",
                         "sudo yum install git -y \n",
-                        "wget --no-check-certificate --no-cookies --header \"Cookie: oraclelicense=accept-securebackup-cookie\" http://download.oracle.com/otn-pub/java/jdk/8u141-b15/336fa29ff2bb4ef291e347e091f7f4a7/jdk-8u141-linux-x64.rpm \n",
-                        "sudo yum install -y jdk-8u141-linux-x64.rpm \n"
+                        "DIR_TGT=/mnt/artefact/",
+                        "\n",
+                        "EFS_FILE_SYSTEM_IP=",
+                        {
+                            "Fn::GetAtt" : [ "MountTarget1", "IpAddress" ]
+                        },
+                        "\n",
+                        "mkdir -p $DIR_TGT\n",
+                        "sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${EFS_FILE_SYSTEM_IP}:/ /mnt/artefact/ \n",
+                        "pwd \n",
+                        "wget --no-cookies --no-check-certificate --header \"Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie\" \"http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz\" -P /home/ec2-user/ \n",
+                        "sudo tar -xzvf /home/ec2-user/jdk-8u131-linux-x64.tar.gz -C /home/ec2-user/ \n",
+                        "sudo mv /home/ec2-user/jdk1.8.0_131 /usr/lib/jvm/ \n",
+                        "sudo echo '#!/bin/bash' > custom.sh \n",
+                        "sudo echo 'export JAVA_HOME=/usr/lib/jvm/jdk1.8.0_131' >> custom.sh \n",
+                        "sudo mv custom.sh /etc/profile.d/ \n",
                     ]]}},
                 "Tags": [
                     {
@@ -177,6 +200,47 @@
                  "CidrIp" : "0.0.0.0/0"
               }]
            }
+        },
+        "MountTargetSecurityGroup": {
+          "Type": "AWS::EC2::SecurityGroup",
+          "Properties": {
+            "VpcId": {"Fn::ImportValue" : {"Fn::Sub" : "baseNetwork-vpcId"}},
+            "GroupDescription" : "security group for efs mount",
+            "SecurityGroupIngress": [
+              {
+                "IpProtocol": "tcp",
+                "FromPort": "2049",
+                "ToPort": "2049",
+                "CidrIp": {"Fn::ImportValue" : {"Fn::Sub" : "baseNetwork-privateSubCidr"}}
+              },
+              {
+                "IpProtocol": "tcp",
+                "FromPort": "2049",
+                "ToPort": "2049",
+                "CidrIp": {"Fn::ImportValue" : {"Fn::Sub" : "baseNetwork-publicSubCidr"}}
+              }
+            ]
+          }
+        },
+        "EFSFileSystem": {
+          "Type": "AWS::EFS::FileSystem",
+          "Properties": {
+            "PerformanceMode": "generalPurpose",
+            "FileSystemTags": [
+              {
+                "Key": "Name",
+                "Value": "EFSFileSystem"
+              }
+            ]
+          }
+        },
+        "MountTarget1": {
+          "Type": "AWS::EFS::MountTarget",
+          "Properties": {
+            "FileSystemId": { "Ref": "EFSFileSystem" },
+            "SubnetId": {"Fn::ImportValue" : {"Fn::Sub" : "baseNetwork-publicSubnet1"}},
+            "SecurityGroups": [ { "Ref": "MountTargetSecurityGroup" } ]
+          }
         }
     }
 }
